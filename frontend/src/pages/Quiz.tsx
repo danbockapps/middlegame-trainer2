@@ -236,8 +236,8 @@ export function Quiz({user}: {user: User}) {
       .catch(() => {
         setSubmitError('Could not submit that move. Try again.')
         setBoardReset((c) => c + 1)
-        setBusy(false)
       })
+      .finally(() => setBusy(false))
   }
 
   const next = () => {
