@@ -1,0 +1,1 @@
+cd backend && source ~/.cargo/env && cargo run
