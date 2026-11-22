@@ -72,7 +72,7 @@ export function treeFromUciList(
   let cur = root
   let used = 0
 
-  const attachOrFollow = (parent: TreeNode, uci: string): TreeNode | null => {
+  const attachNew = (parent: TreeNode, uci: string): TreeNode | null => {
     const existing = parent.children.find((c) => c.uci === uci)
     if (existing) return existing
     const played = playUci(parent.fenAfter, uci)
@@ -89,11 +89,22 @@ export function treeFromUciList(
   }
 
   for (const uci of uciList) {
-    // Try the current node first (deepest), then walk up to the root.
+    // End-of-branch marker: pop the cursor back up one level (clamped at the root).
+    if (uci === '-') {
+      cur = cur.parent ?? root
+      continue
+    }
+    // Try the current node first (deepest), then walk up to the root. A node that already
+    // has this move as a child is skipped, not followed: in a DFS pre-order list a repeated
+    // move means a sibling branch, and following would merge the two branches together.
     let placed: TreeNode | null = null
     let scan: TreeNode | null = cur
     while (scan) {
-      placed = attachOrFollow(scan, uci)
+      if (scan.children.some((c) => c.uci === uci)) {
+        scan = scan.parent
+        continue
+      }
+      placed = attachNew(scan, uci)
       if (placed) break
       scan = scan.parent
     }
@@ -105,13 +116,17 @@ export function treeFromUciList(
   return {tree: {root, side}, used}
 }
 
-/** Serialize the tree as DFS pre-order UCI (the contract's format). */
+/// Serializes the tree as DFS pre-order UCI (the contract's format). A `-` marker is
+/// emitted after each child's subtree; on replay it pops the cursor back up one level,
+/// which is what makes sibling branches that start with the same move unambiguous
+/// (a flat list alone cannot express where branches rejoin).
 export function uciListFromTree(root: TreeNode): string[] {
   const out: string[] = []
   const walk = (node: TreeNode): void => {
     for (const child of node.children) {
       out.push(child.uci)
       walk(child)
+      out.push('-')
     }
   }
   walk(root)
@@ -131,7 +146,12 @@ function tokenizeMovetext(movetext: string): PgnToken[] {
     .replace(/\{[^}]*\}/g, ' ') // comments
     .replace(/;[^\n]*/g, ' ') // rest-of-line comments
     .replace(/\$\d+/g, ' ') // NAGs
-  const noHeaders = noComments.replace(/\[[^\]]*\]\s*/g, ' ')
+  // Variation parens may be glued to neighboring tokens ("(2...Nf6" or "5.Nc3)") —
+  // give them their own tokens so `(` / `)` are always recognized.
+  const noHeaders = noComments
+    .replace(/\[[^\]]*\]\s*/g, ' ')
+    .replace(/\(/g, ' ( ')
+    .replace(/\)/g, ' ) ')
   const tokens: PgnToken[] = []
   for (const raw of noHeaders.split(/\s+/)) {
     if (!raw) continue

@@ -41,9 +41,10 @@ export function Editor() {
       .then((o) => {
         setOpening(o)
         const {tree, used} = treeFromUciList(o.moves, o.side)
-        if (used !== o.moves.length) {
+        const moveCount = o.moves.filter((m) => m !== '-').length
+        if (used !== moveCount) {
           setLoadError(
-            `${o.moves.length - used} move(s) in the saved opening could not be replayed and were dropped from the editor.`,
+            `${moveCount - used} move(s) in the saved opening could not be replayed and were dropped from the editor.`,
           )
         }
         setRoot(tree.root)

@@ -112,6 +112,15 @@ pub fn build_tree(moves: &[String]) -> Tree {
     let mut cursor: Vec<usize> = vec![0];
 
     for uci in moves {
+        // End-of-branch marker: pop the cursor back up one level (clamped at the root).
+        // Emitted by the client's serializer after each child subtree; absent in legacy
+        // lists, which keep the legacy lossy reconstruction.
+        if uci == "-" {
+            if cursor.len() > 1 {
+                cursor.pop();
+            }
+            continue;
+        }
         let parsed = match uci.parse::<UciMove>() {
             Ok(u) => u,
             Err(_) => continue,
@@ -272,6 +281,36 @@ mod tests {
     fn duplicate_move_is_dropped() {
         let tree = build_tree(&moves(&["e2e4", "e2e4"]));
         assert_eq!(tree.nodes.len(), 2);
+    }
+
+    #[test]
+    fn branch_marker_pops_cursor() {
+        // `-` after a subtree pops the cursor, so the following move attaches to the
+        // e4 node again instead of to the deepest node of the finished subtree.
+        let tree = build_tree(&moves(&["e2e4", "e7e5", "g1f3", "-", "-", "c7c5"]));
+        let e4 = tree.nodes[0].children[0];
+        assert_eq!(tree.nodes[e4].children.len(), 2);
+        assert_eq!(tree.nodes[e4].children[0], 2);
+        assert_eq!(tree.nodes[e4].children[1], 4);
+    }
+
+    #[test]
+    fn sibling_branches_with_same_first_move_stay_separate() {
+        // The flat-list ambiguity case: both branches continue with g1f3, which is
+        // legal in both positions. Without the `-` markers the second g1f3 would
+        // attach to the wrong (deeper) position.
+        let tree = build_tree(&moves(&["e2e4", "e7e5", "-", "c7c5", "g1f3"]));
+        let e4 = tree.nodes[0].children[0];
+        assert_eq!(tree.nodes[e4].children.len(), 2);
+        let e5 = tree.nodes[e4].children[0];
+        let c5 = tree.nodes[e4].children[1];
+        // e5's branch ended without continuing; c5's branch has the g1f3 child.
+        assert!(tree.nodes[e5].children.is_empty());
+        assert_eq!(tree.nodes[c5].children.len(), 1);
+        assert_eq!(
+            tree.nodes[tree.nodes[c5].children[0]].uci.as_deref(),
+            Some("g1f3")
+        );
     }
 
     #[test]

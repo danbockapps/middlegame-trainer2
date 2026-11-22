@@ -33,10 +33,13 @@ Auth: cookie session (`sid`, HttpOnly). All endpoints require auth unless noted.
 - `GET /api/openings?deleted=1` → only soft-deleted openings.
 
 ### Tree serialization
-The opening tree is a list of UCI moves in **DFS pre-order**. Reconstruct: iterate; each move
-is a child of the deepest earlier position where it's not already present; a move that is not a
-legal continuation of its parent starts a new branch from the earliest legal ancestor
-(chess.js validates). Leaf/dupes handled client-side too.
+The opening tree is a list of UCI moves in **DFS pre-order**, with a `-` marker after each
+child's subtree. Reconstruct: iterate; a `-` pops the cursor one level toward the root;
+each move is a child of the deepest earlier position where it's not already present; a move
+that is not a legal continuation of its parent starts a new branch from the earliest legal
+ancestor (chess.js validates). The `-` markers are what make sibling branches that start
+with the same move unambiguous; legacy lists without them reconstruct lossily.
+Leaf/dupes handled client-side too.
 
 ## Quiz
 
