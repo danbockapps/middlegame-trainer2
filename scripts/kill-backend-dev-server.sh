@@ -1,0 +1,1 @@
+pkill -f middlegame-trainer-backend
