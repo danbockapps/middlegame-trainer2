@@ -54,6 +54,10 @@ struct OpeningRow {
     moves: Vec<String>,
 }
 
+fn move_count(moves: &[String]) -> i64 {
+    moves.iter().filter(|m| *m != "-").count() as i64
+}
+
 async fn fetch_opening(state: &AppState, user_id: &str, id: i64) -> ApiResult<Option<OpeningRow>> {
     let row = sqlx::query(
         "SELECT id, name, name_overridden, side, moves, range_min, range_max, deleted_at FROM openings WHERE id = ? AND user_id = ?",
@@ -72,7 +76,7 @@ async fn fetch_opening(state: &AppState, user_id: &str, id: i64) -> ApiResult<Op
         name_overridden: row.get::<i64, _>("name_overridden") != 0,
         range_min: row.get("range_min"),
         range_max: row.get("range_max"),
-        move_count: moves.len() as i64,
+        move_count: move_count(&moves),
         deleted: row.get::<Option<String>, _>("deleted_at").is_some(),
         moves,
     }))
@@ -141,7 +145,7 @@ pub async fn list(
                 name_overridden: r.get::<i64, _>("name_overridden") != 0,
                 range_min: r.get("range_min"),
                 range_max: r.get("range_max"),
-                move_count: moves.len() as i64,
+                move_count: move_count(&moves),
                 deleted: r.get::<Option<String>, _>("deleted_at").is_some(),
                 moves,
             }
