@@ -86,6 +86,14 @@ pub struct QuizPosition {
     pub game_url: String,
 }
 
+/// Response of `POST /api/quiz/start` and `POST /api/quiz/:id/skip`.
+#[derive(Debug, Serialize)]
+pub struct QuizStart {
+    #[serde(rename = "quizId")]
+    pub quiz_id: String,
+    pub position: QuizPosition,
+}
+
 /// `0.31` for pawns, or `{"mate": 3}` for mating lines. White-POV.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(untagged)]

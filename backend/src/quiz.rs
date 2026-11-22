@@ -10,7 +10,7 @@ use crate::auth::user_from_jar;
 use crate::error::{ApiError, ApiResult};
 use crate::game::position_before_user_move;
 use crate::lichess::ExplorerResponse;
-use crate::models::{MastersStats, MoveResult, QuizPosition};
+use crate::models::{MastersStats, MoveResult, QuizPosition, QuizStart};
 use crate::state::AppState;
 use crate::tree::{build_tree, parse_position, quiz_anchors};
 
@@ -30,7 +30,7 @@ pub async fn start(
     State(state): State<AppState>,
     jar: axum_extra::extract::CookieJar,
     Json(body): Json<StartBody>,
-) -> ApiResult<(StatusCode, Json<QuizPosition>)> {
+) -> ApiResult<(StatusCode, Json<QuizStart>)> {
     let user = user_from_jar(&state, &jar).await?;
     let opening_id = body.opening_id;
     let row = sqlx::query("SELECT id FROM openings WHERE id = ? AND user_id = ?")
@@ -50,14 +50,14 @@ pub async fn start(
         .await?;
 
     let position = generate_position(&state, &user, &quiz_id, opening_id).await?;
-    Ok((StatusCode::CREATED, Json(position)))
+    Ok((StatusCode::CREATED, Json(QuizStart { quiz_id, position })))
 }
 
 pub async fn skip(
     State(state): State<AppState>,
     Path(quiz_id): Path<String>,
     jar: axum_extra::extract::CookieJar,
-) -> ApiResult<Json<QuizPosition>> {
+) -> ApiResult<Json<QuizStart>> {
     let user = user_from_jar(&state, &jar).await?;
     let row = sqlx::query("SELECT opening_id FROM quiz_sessions WHERE quiz_id = ? AND user_id = ?")
         .bind(&quiz_id)
@@ -67,7 +67,7 @@ pub async fn skip(
         .ok_or_else(|| ApiError::not_found("quiz not found"))?;
     let opening_id: i64 = row.get("opening_id");
     let position = generate_position(&state, &user, &quiz_id, opening_id).await?;
-    Ok(Json(position))
+    Ok(Json(QuizStart { quiz_id, position }))
 }
 
 /// Picks a random same-color anchor, queries the players DB, and stores the chosen
