@@ -43,7 +43,9 @@ export interface MastersTopMove {
 }
 
 export interface QuizMasters {
-  playedPercent: number
+  /** Null when the position never arose in the masters DB (0/0). */
+  playedPercent: number | null
+  playedTotal: number | null
   positionTotal: number
   topMoves: MastersTopMove[]
 }

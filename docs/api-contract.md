@@ -55,7 +55,7 @@ Leaf/dupes handled client-side too.
   if none found.
 - `POST /api/quiz/:quizId/move` body `{ "uci": "g1f3" }` →
   ```json
-  { "masters": { "playedPercent": 0.231, "positionTotal": 51234,
+  { "masters": { "playedPercent": 0.231, "playedTotal": 11832, "positionTotal": 51234,
                  "topMoves": [{ "san": "Nf3", "percent": 0.231 }, ...] },
     "eval": { "before": 0.31, "after": 0.29, "source": "lichess-cloud" } }
   ```

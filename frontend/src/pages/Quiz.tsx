@@ -39,7 +39,8 @@ type Phase =
   | {kind: 'error'; message: string}
 
 interface MastersShape {
-  playedPercent: number
+  playedPercent: number | null
+  playedTotal: number | null
   positionTotal: number
   topMoves: MastersTopMove[]
 }
@@ -227,6 +228,7 @@ export function Quiz({user}: {user: User}) {
           afterFen: fenAfterUci(position.fen, uci) ?? position.fen,
           masters: {
             playedPercent: result.masters.playedPercent,
+            playedTotal: result.masters.playedTotal,
             positionTotal: result.masters.positionTotal,
             topMoves: result.masters.topMoves,
           },
@@ -376,36 +378,55 @@ function Annotation(props: {
 
   // Evals are White-POV; color the delta from the quiz side's point of view.
   const pov = side === 'white' ? 1 : -1
+  const fmt = (n: number) => n.toFixed(2)
   let deltaLabel: string
+  let evalDetail: string | null
   let tone: 'good' | 'bad' | 'flat'
   if (evalData.mate !== null) {
     const m = evalData.mate * pov
     deltaLabel = m > 0 ? `Mate in ${m}` : `Mated in ${-m}`
     tone = m > 0 ? 'good' : 'bad'
+    evalDetail =
+      evalData.before !== null
+        ? `eval ${fmt(evalData.before)} → mate in ${evalData.mate}`
+        : `eval after: mate in ${evalData.mate}`
   } else {
     const before = evalData.before ?? prefetched
     const after = evalData.after
     if (before === null || after === null) {
       deltaLabel = 'eval unavailable'
       tone = 'flat'
+      evalDetail = null
     } else {
       const delta = (after - before) * pov
       tone = delta > 0.3 ? 'good' : delta < -0.3 ? 'bad' : 'flat'
       deltaLabel = `${delta >= 0 ? '+' : '−'}${Math.abs(delta).toFixed(2)}`
+      evalDetail = `eval ${fmt(before)} → ${fmt(after)}`
     }
   }
 
-  const percent = Math.round(masters.playedPercent * 100)
+  const percent = masters.playedPercent === null ? null : Math.round(masters.playedPercent * 100)
+  const playedLabel =
+    masters.playedTotal === null
+      ? masters.positionTotal === 0
+        ? 'this position never arose in the masters database'
+        : 'no master game reached the played move'
+      : `${masters.playedTotal.toLocaleString()} of ${masters.positionTotal.toLocaleString()} games`
 
   return (
     <div className="annotation">
       <p className="annotation-line">
         <strong className={`tone-${tone}`}>{deltaLabel}</strong>{' '}
-        <span className="annotation-sub">engine eval after your move</span>
+        <span className="annotation-sub">
+          engine eval after your move{evalDetail && ` — ${evalDetail}`}
+        </span>
       </p>
       <p className="annotation-line">
-        <strong>{percent}%</strong>{' '}
-        <span className="annotation-sub">of master games chose it here</span>
+        <strong>{percent === null ? '—' : `${percent}%`}</strong>{' '}
+        <span className="annotation-sub">
+          of master games chose it here ({playedLabel}
+          {percent === null && ' — no percentage available'})
+        </span>
       </p>
       {masters.topMoves.length > 0 && (
         <p className="annotation-sub top-moves">

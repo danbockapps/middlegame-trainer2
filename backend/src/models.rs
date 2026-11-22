@@ -122,6 +122,9 @@ pub struct MastersMove {
 pub struct MastersStats {
     #[serde(rename = "playedPercent")]
     pub played_percent: Option<f64>,
+    /// Games in which the played move appeared, out of `position_total`.
+    #[serde(rename = "playedTotal")]
+    pub played_total: Option<i64>,
     #[serde(rename = "positionTotal")]
     pub position_total: i64,
     #[serde(rename = "topMoves")]

@@ -363,6 +363,7 @@ impl Lichess {
         if position_total == 0 {
             return MastersStats {
                 played_percent: None,
+                played_total: None,
                 position_total: 0,
                 top_moves: Vec::new(),
             };
@@ -380,10 +381,8 @@ impl Lichess {
             .moves
             .iter()
             .find(|m| m.san == san || m.uci == played_uci);
-        let played_percent = played.map(|m| {
-            let total = m.white + m.draws + m.black;
-            total as f64 / position_total as f64
-        });
+        let played_total = played.map(|m| m.white + m.draws + m.black);
+        let played_percent = played_total.map(|t| t as f64 / position_total as f64);
         let mut top_moves: Vec<MastersMove> = res.moves.iter().map(to_move).collect();
         top_moves.sort_by(|a, b| {
             b.percent
@@ -393,6 +392,7 @@ impl Lichess {
         top_moves.truncate(5);
         MastersStats {
             played_percent,
+            played_total,
             position_total,
             top_moves,
         }
