@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {useNavigate, useParams} from 'react-router-dom'
 import {getOpening, updateOpening} from '../api/client'
-import type {Opening, Side, User} from '../api/types'
+import type {Opening, Side} from '../api/types'
 import {Board} from '../components/Board'
 import {MoveTree} from '../components/MoveTree'
 import {
@@ -15,7 +15,7 @@ import {
   type TreeNode,
 } from '../lib/tree'
 
-export function Editor({user}: {user: User}) {
+export function Editor() {
   const {id} = useParams()
   const openingId = Number(id)
   const navigate = useNavigate()
@@ -157,8 +157,8 @@ export function Editor({user}: {user: User}) {
         <div>
           <h1 className="opening-title">{displayName ?? 'Unnamed opening'}</h1>
           <p className="opening-sub">
-            {side === 'white' ? 'You play White' : 'You play Black'} · saved name:{' '}
-            {opening.name ?? '—'}
+            {side === 'white' ? 'You play White' : 'You play Black'}
+            {opening.name ? ` — the books call it ${opening.name}` : ''}
           </p>
         </div>
         <div className="editor-actions">
@@ -167,7 +167,7 @@ export function Editor({user}: {user: User}) {
             className="secondary"
             onClick={() => navigate(`/quiz/${opening.id}`)}
           >
-            Quiz this opening →
+            Quiz this opening
           </button>
           <button type="button" onClick={save} disabled={saving || !dirty}>
             {saving ? 'Saving…' : dirty ? 'Save changes' : 'Saved'}
@@ -261,7 +261,8 @@ export function Editor({user}: {user: User}) {
             </label>
             <fieldset className="range-fields">
               <legend className="field-label">
-                Quiz range — moves after the repertoire (negative quizzes within it)
+                Quiz range — how many of your own moves past the repertoire end to drill (negative
+                values quiz positions inside the repertoire)
               </legend>
               <label>
                 from
@@ -289,7 +290,6 @@ export function Editor({user}: {user: User}) {
           </div>
         </aside>
       </div>
-      <p className="signed-in-as">Signed in as {user.username}</p>
     </div>
   )
 }

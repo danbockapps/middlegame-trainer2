@@ -41,7 +41,7 @@ export function App() {
         <main className="main">
           <Routes>
             <Route path="/" element={<Openings />} />
-            <Route path="/openings/:id" element={<Editor key="editor" user={user} />} />
+            <Route path="/openings/:id" element={<Editor key="editor" />} />
             <Route path="/quiz/:id" element={<Quiz user={user} />} />
           </Routes>
         </main>

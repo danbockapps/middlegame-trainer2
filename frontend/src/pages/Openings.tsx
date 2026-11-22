@@ -70,7 +70,7 @@ export function Openings() {
               </Link>
               <span className="row-actions">
                 <Link to={`/quiz/${o.id}`} className="quiz-link">
-                  Quiz →
+                  Quiz
                 </Link>
                 <button
                   type="button"

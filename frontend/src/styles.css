@@ -556,11 +556,8 @@ select {
   margin: 0;
 }
 
-.signed-in-as {
-  margin-top: 3rem;
-  font-family: var(--mono);
-  font-size: 0.75rem;
-  color: var(--ink-soft);
+.quiz-panel .margin-note {
+  margin-bottom: 1.2rem;
 }
 
 /* --- Quiz --- */
@@ -595,6 +592,7 @@ select {
 
 .quiz-settings select {
   margin-bottom: 1.2rem;
+  text-transform: capitalize;
 }
 
 .quiz-settings button {
