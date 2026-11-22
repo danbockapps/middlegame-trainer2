@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    environment:
+      LICHESS_OAUTH_CLIENT_ID: ${LICHESS_OAUTH_CLIENT_ID}
+      LICHESS_OAUTH_CLIENT_SECRET: ${LICHESS_OAUTH_CLIENT_SECRET}
+      LICHESS_REDIRECT_URI: ${LICHESS_REDIRECT_URI:-http://localhost:8080/api/auth/callback}
+      BIND: 0.0.0.0:8080
+      DATABASE_URL: sqlite://data/app.db
+      STATIC_DIR: /app/static
+    volumes:
+      - backend-data:/app/data
+      - ./frontend/dist:/app/static:ro
+    restart: unless-stopped
+
+  # Builds the frontend's static assets into a shared image; the backend serves
+  # them from ./frontend/dist on the host. Run with:
+  #   docker compose build frontend && docker compose run --rm frontend
+  frontend:
+    build: ./frontend
+    volumes:
+      - ./frontend/dist:/out
+    # The frontend image's build produces /srv/dist; copy it to the mounted dir.
+    command: ["sh", "-c", "cp -r /srv/dist/. /out/ 2>/dev/null || true"]
+
+volumes:
+  backend-data:

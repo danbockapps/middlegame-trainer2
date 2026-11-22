@@ -1,0 +1,16 @@
+# Rust
+backend/target/
+
+# SQLite data
+backend/data/
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
+.env
+backend/.env
+
+# Misc
+.DS_Store
+*.log
