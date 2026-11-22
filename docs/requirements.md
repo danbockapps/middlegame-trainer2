@@ -1,6 +1,6 @@
 # Requirements - Middlegame Trainer 2
 
-This will be a web application with a Rust/Axum back end and a React/Vite front end. The purpose is for the user to build a repertoire of chess openings and then get quizzed on the middlegame positions that result from those openings. The user should authenticate using their Lichess account. We also need a splash page for users who are not logged in.
+This will be a new web application. The purpose is for the user to build a repertoire of chess openings and then get quizzed on the middlegame positions that result from those openings. The user should authenticate using their Lichess account. We also need a splash page for users who are not logged in.
 
 ### Build UI
 
@@ -8,7 +8,7 @@ The user should see a list of their existing openings. There should be a button 
 
 ### Quiz UI
 
-The user selects one of the openings they've built. They select a numeric range of number of moves for number of moves after repertoire end (more on that later). The default range should be 0 to 2. The app selects (randomly, perhaps) a same-color leaf node. For example, if the user has white in this opening, and the leaf node of the tree is a move for black, ignore that move and consider the white move preceding it to be the same-color leaf node. Use the FEN for that position to query the Lichess amateur database for games that reached that position by players near the user's blitz or rapid rating, which we have because they logged in using their Lichess account.
+The user selects one of the openings they've built. They select a numeric range for number of moves after repertoire end (more on that later). The default range should be 0 to 2. The app selects (randomly, perhaps) a same-color leaf node. For example, if the user has white in this opening, and the leaf node of the tree is a move for black, ignore that move and consider the white move preceding it to be the same-color leaf node. Use the FEN for that position to query the Lichess amateur database for games that reached that position by players near the user's blitz or rapid rating, which we have because they logged in using their Lichess account.
 
 The app shows a position to the user. The position is from one of the Lichess games, and the move number is selected using the numeric range. For example, if the range is 1 to 3, and the leaf node is move 6, then the user is shown the position from the Lichess game before their side's move 7, 8 or 9. The numeric range should allow zero and negative numbers, which would quiz the user on moves that are in their repertoire (unless the position was arrived at via transposition, but don't worry about that).
 
@@ -18,11 +18,11 @@ On the to-move screen there should also be a skip button to skip to the next pos
 
 ### Predecessor project
 
-There is a predecessor project at ../middlegame-trainer. The new project is a complete rewrite with a different stack and design, but there are some lessons to be aware of from that attempt. Look at the files AGENTS.md and lib/api.ts in particular. There are examples of how to access the Lichess masters database, the Lichess amateur database, and engine evals, all of which we will need.
+There is a predecessor project at ../middlegame-trainer. The new project will be a complete rewrite with a different stack and design, but there are some lessons to be aware of from that attempt. Look at the files AGENTS.md and lib/api.ts in particular. There are examples of how to access the Lichess masters database, the Lichess amateur database, and engine evals, all of which we will need.
 
 ### Stack suggestions
 
-Chessground npm package, sqlite
+Rust/Axum back end and React/Vite front end. Chessground npm package, sqlite.
 
 ### UI design
 
@@ -32,4 +32,4 @@ All design specifics above are negotiable.
 
 ### Prod
 
-The app will be deployed to a VPS with limited system resources. Other apps on the server use Docker containers, so I have a slight preference for that, but this will be the first one that uses Rust.
+The app will need to be deployed to a VPS with limited system resources (2 GB RAM, 2 GB swap, 40 GB disk). Other apps on the server use Docker containers, so I have a slight preference for that, but this will be the first one that uses Rust.
