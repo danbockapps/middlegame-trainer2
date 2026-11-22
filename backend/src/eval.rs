@@ -56,8 +56,40 @@ fn explorer_castle_uci(m: &Move) -> String {
 
 /// Eval delta for the played move: cloud-eval for the before-position (whose PVs
 /// usually already contain the after-eval), else cloud-eval of the after-position;
-/// if cloud-eval misses for either, chess-api.com for both.
+/// if cloud-eval misses for either, chess-api.com for both. Infallible: a failed
+/// lookup degrades to an `unavailable` delta (the quiz move must never fail
+/// because a third-party eval service is down).
 pub async fn eval_delta(
+    lichess: &Lichess,
+    before_fen: &str,
+    before_position: &Chess,
+    after_fen: &str,
+    after_position: &Chess,
+    played_uci: &str,
+) -> EvalDelta {
+    match eval_delta_inner(
+        lichess,
+        before_fen,
+        before_position,
+        after_fen,
+        after_position,
+        played_uci,
+    )
+    .await
+    {
+        Ok(delta) => delta,
+        Err(e) => {
+            tracing::warn!("eval lookup failed, marking unavailable: {e:#}");
+            EvalDelta {
+                before: EvalValue::Unavailable,
+                after: EvalValue::Unavailable,
+                source: "unavailable",
+            }
+        }
+    }
+}
+
+async fn eval_delta_inner(
     lichess: &Lichess,
     before_fen: &str,
     before_position: &Chess,

@@ -6,15 +6,42 @@
 use anyhow::{Result, anyhow};
 use chrono::{Datelike, Utc};
 use rand::Rng;
-use reqwest::Client;
+use reqwest::{Client, RequestBuilder, Response};
 use serde::Deserialize;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use crate::models::{MastersMove, MastersStats};
 
 const EXPLORER_BASE: &str = "https://explorer.lichess.ovh";
 const LICHESS_BASE: &str = "https://lichess.org";
 const CHESS_API: &str = "https://chess-api.com/v1";
+
+/// Sends an outbound HTTP request, logging the request and the response (status +
+/// duration) so external API latency/failures are visible in the server log.
+async fn send_logged(http: &Client, req: RequestBuilder) -> Result<Response> {
+    let req = req.build()?;
+    let method = req.method().to_string();
+    let url = req.url().to_string();
+    tracing::info!("external api request: {method} {url}");
+    let start = Instant::now();
+    match http.execute(req).await {
+        Ok(res) => {
+            tracing::info!(
+                "external api response: {method} {url} -> {} in {:?}",
+                res.status(),
+                start.elapsed()
+            );
+            Ok(res)
+        }
+        Err(e) => {
+            tracing::warn!(
+                "external api error: {method} {url} after {:?}: {e}",
+                start.elapsed()
+            );
+            Err(e.into())
+        }
+    }
+}
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ExplorerMove {
@@ -102,7 +129,7 @@ impl Lichess {
             if let Some(token) = token {
                 req = req.bearer_auth(token);
             }
-            let res = req.send().await?;
+            let res = send_logged(&self.http, req).await?;
             if res.status() == 429 && attempt == 0 {
                 let wait = res
                     .headers()
@@ -215,7 +242,7 @@ impl Lichess {
         let mut req = self.http.get(&url).bearer_auth(token);
         req = req.header("Accept", "application/x-chessgo");
         for attempt in 0..2 {
-            let res = req.try_clone().expect("request cloneable").send().await?;
+            let res = send_logged(&self.http, req.try_clone().expect("request cloneable")).await?;
             if res.status() == 429 && attempt == 0 {
                 tokio::time::sleep(Duration::from_secs(2)).await;
                 continue;
@@ -235,7 +262,7 @@ impl Lichess {
             "{LICHESS_BASE}/api/cloud-eval?fen={}&multiPv=6",
             urlencode(fen)
         );
-        let res = self.http.get(&url).send().await?;
+        let res = send_logged(&self.http, self.http.get(&url)).await?;
         if res.status() == 404 {
             return Ok(None);
         }
@@ -251,13 +278,17 @@ impl Lichess {
     }
 
     /// chess-api.com eval (White POV), the fallback when cloud-eval misses.
+    /// Short timeout: in practice it either answers in under a second or hangs
+    /// indefinitely; a hung fallback shouldn't stall the quiz move.
     pub async fn chess_api_eval(&self, fen: &str) -> Result<(Option<f64>, Option<i32>)> {
-        let res = self
-            .http
-            .post(CHESS_API)
-            .json(&serde_json::json!({ "fen": fen, "depth": 12 }))
-            .send()
-            .await?;
+        let res = send_logged(
+            &self.http,
+            self.http
+                .post(CHESS_API)
+                .timeout(Duration::from_secs(5))
+                .json(&serde_json::json!({ "fen": fen, "depth": 12 })),
+        )
+        .await?;
         let status = res.status();
         if !status.is_success() {
             return Err(anyhow!("chess-api.com failed: {status}"));
@@ -297,18 +328,17 @@ impl Lichess {
         code_verifier: &str,
         redirect_uri: &str,
     ) -> Result<String> {
-        let res = self
-            .http
-            .post(format!("{LICHESS_BASE}/api/token"))
-            .json(&serde_json::json!({
-                "grant_type": "authorization_code",
-                "code": code,
-                "client_id": client_id,
-                "code_verifier": code_verifier,
-                "redirect_uri": redirect_uri,
-            }))
-            .send()
-            .await?;
+        let token_req =
+            self.http
+                .post(format!("{LICHESS_BASE}/api/token"))
+                .json(&serde_json::json!({
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "client_id": client_id,
+                    "code_verifier": code_verifier,
+                    "redirect_uri": redirect_uri,
+                }));
+        let res = send_logged(&self.http, token_req).await?;
         let status = res.status();
         let value: serde_json::Value = res.json().await?;
         if !status.is_success() {

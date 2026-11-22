@@ -17,6 +17,8 @@ export interface BoardProps {
   dests: Map<string, string[]> | null
   onMove?: (from: string, to: string) => void
   lastMove?: [string, string] | null
+  /** Bump to force a re-sync from `fen` (undoes chessground's optimistic piece move). */
+  resetSignal?: number
 }
 
 export function Board(props: BoardProps) {
@@ -48,6 +50,7 @@ export function Board(props: BoardProps) {
     api.set({
       fen: props.fen,
       orientation: props.orientation,
+      turnColor: turnColorOf(props.fen), // chessground does NOT infer the turn from the fen
       check: inCheck(props.fen),
       lastMove: props.lastMove ? (props.lastMove.map(key) as [Key, Key]) : undefined,
       viewOnly: !canMove,
@@ -61,7 +64,14 @@ export function Board(props: BoardProps) {
         },
       },
     })
-  }, [props.fen, props.orientation, props.movableColor, props.dests, props.lastMove])
+  }, [
+    props.fen,
+    props.orientation,
+    props.movableColor,
+    props.dests,
+    props.lastMove,
+    props.resetSignal,
+  ])
 
   return <div className="board" ref={ref} />
 }
@@ -72,6 +82,13 @@ function inCheck(fen: string): boolean {
   } catch {
     return false
   }
+}
+
+// Chessground treats whose turn it is as a separate movable/turnColor concern, not
+// something it parses out of the fen — pass it explicitly or black positions only
+// accept premoves (piece never moves).
+function turnColorOf(fen: string): 'white' | 'black' {
+  return fen.split(' ')[1] === 'b' ? 'black' : 'white'
 }
 
 // Chessground's `Key` is a template-literal type; our square strings satisfy it

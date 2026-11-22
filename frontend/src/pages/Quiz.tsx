@@ -1,6 +1,5 @@
 import {useCallback, useEffect, useMemo, useState} from 'react'
 import {Link, useNavigate, useParams} from 'react-router-dom'
-import {Chess} from 'chess.js'
 import {
   getOpening,
   getSettings,
@@ -22,7 +21,7 @@ import type {
 import {RequestError} from '../api/types'
 import {Board} from '../components/Board'
 import {fetchPositionEval, screenshotUrl} from '../lib/lichess'
-import {legalDests, turnOf} from '../lib/tree'
+import {fenAfterUci, legalDests, promotionOf, sanForUci, turnOf} from '../lib/tree'
 
 type Phase =
   | {kind: 'settings'}
@@ -62,6 +61,9 @@ export function Quiz({user}: {user: User}) {
   const [busy, setBusy] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [prefetchedEval, setPrefetchedEval] = useState<number | null>(null)
+  // Bumped when a move submission fails so the board re-syncs to the quiz position
+  // (chessground moves pieces optimistically; without this the board desyncs).
+  const [boardReset, setBoardReset] = useState(0)
 
   useEffect(() => {
     getOpening(openingId)
@@ -212,7 +214,9 @@ export function Quiz({user}: {user: User}) {
     if (phase.kind !== 'position' || busy) return
     setBusy(true)
     setSubmitError(null)
-    const uci = from + to
+    // Promotions are auto-queens: append the promotion char so the backend (shakmaty)
+    // and chess.js both see a well-formed 5-char UCI for promoting moves.
+    const uci = from + to + (promotionOf(position.fen, from, to) ?? '')
     playQuizMove(phase.quizId, uci)
       .then((result) => {
         setPhase({
@@ -220,7 +224,7 @@ export function Quiz({user}: {user: User}) {
           quizId: phase.quizId,
           position,
           played: uci,
-          afterFen: fenAfterUci(position.fen, uci),
+          afterFen: fenAfterUci(position.fen, uci) ?? position.fen,
           masters: {
             playedPercent: result.masters.playedPercent,
             positionTotal: result.masters.positionTotal,
@@ -231,6 +235,7 @@ export function Quiz({user}: {user: User}) {
       })
       .catch(() => {
         setSubmitError('Could not submit that move. Try again.')
+        setBoardReset((c) => c + 1)
         setBusy(false)
       })
   }
@@ -254,6 +259,7 @@ export function Quiz({user}: {user: User}) {
         tc={tc}
         busy={busy}
         submitError={submitError}
+        boardReset={boardReset}
         onMove={playMove}
         onSkip={next}
       />
@@ -264,7 +270,7 @@ export function Quiz({user}: {user: User}) {
   const {played, afterFen, masters, evalData} = phase
   const lastMove: [string, string] = [played.slice(0, 2), played.slice(2, 4)]
   const shot = screenshotUrl(afterFen, side, {from: lastMove[0], to: lastMove[1]})
-  const playedSan = sanOf(position.fen, played)
+  const playedSan = sanForUci(position.fen, played) ?? played
 
   return (
     <div className="quiz">
@@ -316,10 +322,11 @@ function PositionView(props: {
   tc: TimeControl
   busy: boolean
   submitError: string | null
+  boardReset: number
   onMove: (from: string, to: string) => void
   onSkip: () => void
 }) {
-  const {position, minRating, maxRating, tc, busy, submitError, onMove, onSkip} = props
+  const {position, minRating, maxRating, tc, busy, submitError, boardReset, onMove, onSkip} = props
   const side = position.side
   const canMove = turnOf(position.fen) === (side === 'white' ? 'w' : 'b')
   const dests = useMemo(
@@ -337,6 +344,7 @@ function PositionView(props: {
             movableColor={side}
             dests={dests}
             onMove={onMove}
+            resetSignal={boardReset}
           />
         </div>
         <p className="quiz-caption">
@@ -411,23 +419,4 @@ function Annotation(props: {
       <p className="annotation-sub">eval source: {evalData.source}</p>
     </div>
   )
-}
-
-function fenAfterUci(fen: string, uci: string): string {
-  const chess = new Chess(fen)
-  try {
-    chess.move({from: uci.slice(0, 2), to: uci.slice(2, 4)})
-    return chess.fen()
-  } catch {
-    return fen
-  }
-}
-
-function sanOf(fen: string, uci: string): string {
-  const chess = new Chess(fen)
-  try {
-    return chess.move({from: uci.slice(0, 2), to: uci.slice(2, 4)}).san
-  } catch {
-    return uci
-  }
 }

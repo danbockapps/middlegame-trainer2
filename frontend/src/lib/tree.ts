@@ -45,6 +45,15 @@ export function fenAfterUci(fen: string, uci: string): string | null {
   return playUci(fen, uci)?.fenAfter ?? null
 }
 
+/** The auto-queen promotion char for a from/to pair, or null if it isn't a promotion. */
+export function promotionOf(fen: string, from: string, to: string): 'q' | null {
+  const chess = new Chess(fen)
+  const promotes = chess
+    .moves({verbose: true})
+    .some((m) => m.from === from && m.to === to && m.promotion)
+  return promotes ? 'q' : null
+}
+
 function uciOf(move: {from: string; to: string; promotion?: string | undefined}): string {
   return move.from + move.to + (move.promotion && move.promotion !== 'q' ? move.promotion : '')
 }

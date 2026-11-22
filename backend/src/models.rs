@@ -95,11 +95,14 @@ pub struct QuizStart {
 }
 
 /// `0.31` for pawns, or `{"mate": 3}` for mating lines. White-POV.
+/// One eval number. `Unavailable` serializes as JSON `null` (the frontend renders
+/// "eval unavailable" for it).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum EvalValue {
     Pawns(f64),
     Mate { mate: i32 },
+    Unavailable,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]

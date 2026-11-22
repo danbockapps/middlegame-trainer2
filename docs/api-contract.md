@@ -56,7 +56,9 @@ legal continuation of its parent starts a new branch from the earliest legal anc
                  "topMoves": [{ "san": "Nf3", "percent": 0.231 }, ...] },
     "eval": { "before": 0.31, "after": 0.29, "source": "lichess-cloud" } }
   ```
-  (evals in pawns, White POV; `mate` lines encoded as `"mate": 3` / `-2` instead of `before`/`after` numbers.)
+  (evals in pawns, White POV; `mate` lines encoded as `"mate": 3` / `-2` instead of `before`/`after` numbers.
+  When the eval lookup fails entirely, `eval` is `{ "before": null, "after": null, "source": "unavailable" }`
+  — a failed eval never fails the move.)
 - `POST /api/quiz/:quizId/skip` → same shape as `POST /api/quiz/start` response (new position, same quizId).
 - Screenshot URL is client-side: `https://lichess.org/export/fen.gif?fen=<fen>&color=<white|black>&lastMove=<from><to>`.
 

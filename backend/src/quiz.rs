@@ -266,8 +266,7 @@ pub async fn play_move(
         &after_position,
         &played_uci,
     )
-    .await
-    .map_err(|e| ApiError::internal(format!("eval lookup failed: {e}")))?;
+    .await;
 
     Ok(Json(MoveResult { masters, eval }))
 }

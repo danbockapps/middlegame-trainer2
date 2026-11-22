@@ -6,7 +6,12 @@
 import {Chess} from 'chess.js'
 
 async function fetchWithRetry(url: string, init?: RequestInit, retries = 1): Promise<Response> {
+  console.debug(`[external api] request: GET ${url}`)
+  const start = performance.now()
   const res = await fetch(url, init)
+  console.debug(
+    `[external api] response: GET ${url} -> ${res.status} in ${Math.round(performance.now() - start)}ms`,
+  )
   if (res.status === 429 && retries > 0) {
     const retryAfter = Number(res.headers.get('retry-after')) || 2
     await new Promise((r) => setTimeout(r, retryAfter * 1000))
@@ -45,11 +50,16 @@ interface ChessApiResponse {
 export async function fetchChessApiEval(
   fen: string,
 ): Promise<{cp: number | null; mate: number | null}> {
+  console.debug('[external api] request: POST https://chess-api.com/v1')
+  const start = performance.now()
   const res = await fetch('https://chess-api.com/v1', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({fen, depth: 12}),
   })
+  console.debug(
+    `[external api] response: POST https://chess-api.com/v1 -> ${res.status} in ${Math.round(performance.now() - start)}ms`,
+  )
   if (!res.ok) throw new Error(`chess-api.com error (${res.status})`)
   const data = (await res.json()) as ChessApiResponse
   return {
