@@ -330,6 +330,12 @@ button.link-button.danger {
   gap: 0.6rem;
 }
 
+.quiz-link[aria-disabled='true'] {
+  color: var(--ink-soft);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .trash {
   margin-top: 3rem;
   max-width: 40em;

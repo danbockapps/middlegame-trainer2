@@ -69,7 +69,14 @@ export function Openings() {
                 </span>
               </Link>
               <span className="row-actions">
-                <Link to={`/quiz/${o.id}`} className="quiz-link">
+                <Link
+                  to={`/quiz/${o.id}`}
+                  className="quiz-link"
+                  aria-disabled={o.moveCount === 0}
+                  onClick={(e) => {
+                    if (o.moveCount === 0) e.preventDefault()
+                  }}
+                >
                   Quiz
                 </Link>
                 <button

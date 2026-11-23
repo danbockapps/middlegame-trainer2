@@ -171,6 +171,7 @@ export function Editor() {
             type="button"
             className="secondary"
             onClick={() => navigate(`/quiz/${opening.id}`)}
+            disabled={dirty || root.children.length === 0}
           >
             Quiz this opening
           </button>
