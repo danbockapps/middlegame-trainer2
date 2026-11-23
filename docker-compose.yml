@@ -11,7 +11,7 @@ services:
       DATABASE_URL: sqlite://data/app.db
       STATIC_DIR: /app/static
     volumes:
-      - backend-data:/app/data
+      - /var/lib/middlegame.danbock.net:/app/data
       - ./frontend/dist:/app/static:ro
     restart: unless-stopped
 
@@ -25,5 +25,3 @@ services:
     # The frontend image's build produces /srv/dist; copy it to the mounted dir.
     command: ["sh", "-c", "cp -r /srv/dist/. /out/ 2>/dev/null || true"]
 
-volumes:
-  backend-data:
