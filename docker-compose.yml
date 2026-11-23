@@ -6,11 +6,12 @@ services:
     # Lichess OAuth needs no app registration: CLIENT_ID is any stable string,
     # set in .env (compose interpolation). Auth is PKCE — there is no secret.
     environment:
-      LICHESS_CLIENT_ID: ${LICHESS_CLIENT_ID:-}
-      LICHESS_REDIRECT_URI: ${LICHESS_REDIRECT_URI:-http://localhost:8080/api/auth/callback}
       BIND: 0.0.0.0:8080
       DATABASE_URL: sqlite://data/app.db
       STATIC_DIR: /app/static
+    # Loads LICHESS_CLIENT_ID / LICHESS_REDIRECT_URI from backend/.env
+    # (compose interpolation only reads a .env next to this file).
+    env_file: ./backend/.env
     volumes:
       - /var/lib/middlegame.danbock.net:/app/data
       - ./frontend/dist:/app/static:ro
