@@ -73,25 +73,27 @@ export function Editor() {
 
   const onBoardMove = useCallback(
     (from: string, to: string) => {
-      if (!current) return
+      // An empty tree has no current node yet — play from the root position.
+      const at = current ?? root
       const uci = from + to
-      const existing = current.children.find((c) => c.uci === uci)
+      const existing = at.children.find((c) => c.uci === uci)
       if (existing) {
         setCurrent(existing)
         return
       }
-      const played = playUci(current.fenAfter, uci)
+      const played = playUci(at.fenAfter, uci)
       if (!played) return
       const node: TreeNode = {
         uci,
         san: played.san,
         fenAfter: played.fenAfter,
-        parent: current,
+        parent: at,
         children: [],
       }
-      current.children.push(node)
-      setRoot(structuredClone(root))
-      setCurrent(node)
+      at.children.push(node)
+      const {root: newRoot, node: newNode} = clonedTreeAt(root, node)
+      setRoot(newRoot)
+      setCurrent(newNode)
       setDirty(true)
     },
     [current, root],
@@ -100,8 +102,9 @@ export function Editor() {
   const deleteMove = (node: TreeNode) => {
     if (!node.parent) return
     node.parent.children = node.parent.children.filter((c) => c !== node)
-    setCurrent(node.parent)
-    setRoot(structuredClone(root))
+    const {root: newRoot, node: newNode} = clonedTreeAt(root, node.parent)
+    setRoot(newRoot)
+    setCurrent(newNode)
     setDirty(true)
   }
 
@@ -112,8 +115,9 @@ export function Editor() {
       return
     }
     mergeTree(root, parsed.tree.root)
-    setRoot(structuredClone(root))
-    setCurrent(lastOf(root))
+    const newRoot = structuredClone(root)
+    setRoot(newRoot)
+    setCurrent(lastOf(newRoot))
     setDirty(true)
     setPgnOpen(false)
     setPgnText('')
@@ -299,4 +303,24 @@ function lastOf(root: TreeNode): TreeNode | null {
   let node = root
   while (node.children.length > 0) node = node.children[0]
   return node === root ? null : node
+}
+
+function pathOf(node: TreeNode): TreeNode[] {
+  const path: TreeNode[] = []
+  for (let n: TreeNode | null = node; n; n = n.parent) path.unshift(n)
+  return path
+}
+
+// After mutating the tree in place, `root` must be replaced with a clone so React sees
+// new state — but node identities from the old tree are then stale. Re-derive the
+// equivalent node inside the clone by walking the uci path from the root.
+function clonedTreeAt(oldRoot: TreeNode, focus: TreeNode): {root: TreeNode; node: TreeNode} {
+  const newRoot = structuredClone(oldRoot)
+  let node: TreeNode = newRoot
+  for (const step of pathOf(focus).slice(1)) {
+    const next = node.children.find((c) => c.uci === step.uci)
+    if (!next) break
+    node = next
+  }
+  return {root: newRoot, node}
 }
