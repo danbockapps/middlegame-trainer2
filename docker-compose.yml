@@ -3,9 +3,10 @@ services:
     build: ./backend
     ports:
       - "8080:8080"
+    # Lichess OAuth needs no app registration: CLIENT_ID is any stable string,
+    # set in .env (compose interpolation). Auth is PKCE — there is no secret.
     environment:
-      LICHESS_OAUTH_CLIENT_ID: ${LICHESS_OAUTH_CLIENT_ID}
-      LICHESS_OAUTH_CLIENT_SECRET: ${LICHESS_OAUTH_CLIENT_SECRET}
+      LICHESS_CLIENT_ID: ${LICHESS_CLIENT_ID:-}
       LICHESS_REDIRECT_URI: ${LICHESS_REDIRECT_URI:-http://localhost:8080/api/auth/callback}
       BIND: 0.0.0.0:8080
       DATABASE_URL: sqlite://data/app.db

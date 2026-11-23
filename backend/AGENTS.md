@@ -16,7 +16,7 @@ and the static frontend build (SPA fallback) from `STATIC_DIR`.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `LICHESS_CLIENT_ID` | unset | Any stable string — Lichess OAuth has no app registration; auth uses PKCE (no client secret). Missing → auth endpoints return `{error: "not_configured"}` but the server still runs. |
+| `LICHESS_CLIENT_ID` | unset | Any stable string (e.g. the domain name). **Lichess requires no app registration** — there is no developer portal and no client secret; auth uses PKCE (see auth.rs). Missing → auth endpoints return `{error: "not_configured"}` but the server still runs. |
 | `LICHESS_REDIRECT_URI` | `http://localhost:8080/api/auth/callback` | Must match the OAuth app registration. |
 | `BIND` | `0.0.0.0:8080` | Listen address. |
 | `DATABASE_URL` | `sqlite://data/app.db` | SQLite file (parent dir auto-created). |
@@ -27,7 +27,10 @@ and the static frontend build (SPA fallback) from `STATIC_DIR`.
 - `main.rs` — router: `/api` nest + static-file fallback; tracing.
 - `config.rs` / `state.rs` — env config and shared `AppState` (pool + reqwest-backed Lichess client).
 - `db.rs` — sqlx (SQLite, runtime-checked queries) pool + schema, all tables.
-- `auth.rs` — Lichess OAuth authorization-code flow **with PKCE** (Lichess has no app registration; `LICHESS_CLIENT_ID` is any stable string, there is no client secret); HttpOnly `sid` cookie sessions in SQLite; user upsert; search-settings seeding (own rating ±200 at first login).
+- `auth.rs` — Lichess OAuth authorization-code flow **with PKCE**. **Lichess does not require
+  (or offer) app registration — no developer portal, no client secret.** `LICHESS_CLIENT_ID`
+  is just any stable string you pick; there is nothing to register anywhere. HttpOnly `sid`
+  cookie sessions in SQLite; user upsert; search-settings seeding (own rating ±200 at first login).
 - `openings.rs` — CRUD, soft delete/restore/permanent delete; name auto-computed at save from the masters explorer's `opening.name` unless `nameOverridden`.
 - `quiz.rs` — same-color anchor picking, players-DB search with per-user settings, quiz-session state in SQLite.
 - `tree.rs` — pure domain logic: DFS pre-order tree serialization (contract's "Tree serialization"), quiz-anchor selection, naming-position selection. **Unit-tested, no I/O.**
