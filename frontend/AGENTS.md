@@ -24,7 +24,7 @@ exactly; domain terms in `../GLOSSARY.md`.
     every SAN; illegal moves are dropped, not fatal.
   - `legalDests(fen)` — chessground dests map.
 - `src/lib/lichess.ts` — client-side Lichess helpers reused from the predecessor: 429-retrying
-  fetch, Lichess cloud-eval (with chess-api.com fallback), screenshot URL builder.
+  fetch, Lichess cloud-eval (with stockfish.online fallback), screenshot URL builder.
 - `src/components/Board.tsx` — chessground wrapper; owns the string↔`Key` casts.
   Promotions are auto-queens (uci keeps no promotion char).
 - `src/components/MoveTree.tsx` — the move tree rendered as printed book notation:

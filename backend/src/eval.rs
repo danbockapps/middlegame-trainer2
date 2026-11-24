@@ -1,4 +1,4 @@
-//! Engine evals, White POV. Lichess cloud-eval first, chess-api.com fallback —
+//! Engine evals, White POV. Lichess cloud-eval first, stockfish.online fallback —
 //! never mixed: both numbers of a delta always come from the same source.
 
 use shakmaty::{Chess, Move};
@@ -56,7 +56,7 @@ fn explorer_castle_uci(m: &Move) -> String {
 
 /// Eval delta for the played move: cloud-eval for the before-position (whose PVs
 /// usually already contain the after-eval), else cloud-eval of the after-position;
-/// if cloud-eval misses for either, chess-api.com for both. Infallible: a failed
+/// if cloud-eval misses for either, stockfish.online for both. Infallible: a failed
 /// lookup degrades to an `unavailable` delta (the quiz move must never fail
 /// because a third-party eval service is down).
 pub async fn eval_delta(
@@ -124,10 +124,10 @@ async fn eval_delta_inner(
         }
     }
 
-    // Fallback: chess-api.com for both, keeping the numbers comparable.
+    // Fallback: stockfish.online for both, keeping the numbers comparable.
     let (before, after) = tokio::try_join!(
-        lichess.chess_api_eval(before_fen),
-        lichess.chess_api_eval(after_fen)
+        lichess.stockfish_eval(before_fen),
+        lichess.stockfish_eval(after_fen)
     )?;
     let to_value = |(pawns, mate): (Option<f64>, Option<i32>)| match mate {
         Some(mate) => EvalValue::Mate { mate },
@@ -136,6 +136,6 @@ async fn eval_delta_inner(
     Ok(EvalDelta {
         before: to_value(before),
         after: to_value(after),
-        source: "chess-api",
+        source: "stockfish",
     })
 }

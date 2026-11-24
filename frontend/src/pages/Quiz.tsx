@@ -458,9 +458,7 @@ function Annotation(props: {
         <h3 className="annotation-source">Engine</h3>
         <p className="annotation-line">
           <strong className={`tone-${tone}`}>{deltaLabel}</strong>
-          <span className="annotation-sub">
-            after your move{evalDetail && ` · ${evalDetail}`}
-          </span>
+          <span className="annotation-sub">after your move{evalDetail && ` · ${evalDetail}`}</span>
         </p>
         <p className="annotation-sub annotation-footnote">source: {evalData.source}</p>
       </div>
@@ -469,9 +467,7 @@ function Annotation(props: {
         <p className="annotation-line">
           <strong>{percent === null ? '—' : `${percent}%`}</strong>
           <span className="annotation-sub">
-            {percent === null
-              ? playedLabel
-              : `of master games chose it (${playedLabel})`}
+            {percent === null ? playedLabel : `of master games chose it (${playedLabel})`}
           </span>
         </p>
         {masters.topMoves.length > 0 && (

@@ -261,7 +261,7 @@ pub async fn play_move(
         .map_err(|e| ApiError::internal(format!("masters explorer failed: {e}")))?;
     let masters: MastersStats = state.lichess.masters_stats(&masters_res, &san, &played_uci);
 
-    // Eval delta from a single source (cloud-eval first, chess-api fallback).
+    // Eval delta from a single source (cloud-eval first, stockfish.online fallback).
     let eval = crate::eval::eval_delta(
         &state.lichess,
         &fen_before,

@@ -1,4 +1,4 @@
-//! All Lichess (and chess-api.com) access happens here, server-side, using the
+//! All Lichess (and stockfish.online) access happens here, server-side, using the
 //! logged-in user's OAuth token. The opening explorer 401s tokenless requests
 //! from many IPs, so explorer calls always send the Bearer token when available.
 //! Explorer calls retry once on HTTP 429.
@@ -14,7 +14,7 @@ use crate::models::{MastersMove, MastersStats};
 
 const EXPLORER_BASE: &str = "https://explorer.lichess.ovh";
 const LICHESS_BASE: &str = "https://lichess.org";
-const CHESS_API: &str = "https://chess-api.com/v1";
+const STOCKFISH_API: &str = "https://stockfish.online/api/s/v2.php";
 
 /// Sends an outbound HTTP request, logging the request and the response (status +
 /// duration) so external API latency/failures are visible in the server log.
@@ -110,6 +110,7 @@ pub struct CloudEvalResponse {
 
 pub struct Lichess {
     http: Client,
+    stockfish_key: Option<String>,
 }
 
 impl Lichess {
@@ -119,7 +120,13 @@ impl Lichess {
             .user_agent("middlegame-trainer/2")
             .build()
             .expect("reqwest client builds");
-        Self { http }
+        let stockfish_key = std::env::var("STOCKFISH_API_KEY")
+            .ok()
+            .filter(|v| !v.trim().is_empty());
+        Self {
+            http,
+            stockfish_key,
+        }
     }
 
     /// GET JSON with one retry on 429 (honoring Retry-After when present).
@@ -277,26 +284,38 @@ impl Lichess {
         Ok(Some(serde_json::from_value(value)?))
     }
 
-    /// chess-api.com eval (White POV), the fallback when cloud-eval misses.
-    /// Short timeout: in practice it either answers in under a second or hangs
-    /// indefinitely; a hung fallback shouldn't stall the quiz move.
-    pub async fn chess_api_eval(&self, fen: &str) -> Result<(Option<f64>, Option<i32>)> {
+    /// stockfish.online eval (White POV), the fallback when cloud-eval misses.
+    /// Depth is fixed at 15 per the API's requirements. Short timeout: a hung
+    /// fallback shouldn't stall the quiz move.
+    pub async fn stockfish_eval(&self, fen: &str) -> Result<(Option<f64>, Option<i32>)> {
+        let mut url = format!("{STOCKFISH_API}?fen={}&depth=15", urlencode(fen));
+        if let Some(key) = &self.stockfish_key {
+            url.push_str(&format!("&key={key}"));
+        }
         let res = send_logged(
             &self.http,
-            self.http
-                .post(CHESS_API)
-                .timeout(Duration::from_secs(5))
-                .json(&serde_json::json!({ "fen": fen, "depth": 12 })),
+            self.http.get(&url).timeout(Duration::from_secs(10)),
         )
         .await?;
         let status = res.status();
         if !status.is_success() {
-            return Err(anyhow!("chess-api.com failed: {status}"));
+            return Err(anyhow!("stockfish.online failed: {status}"));
         }
         let value: serde_json::Value = res.json().await?;
-        let pawns = value.get("eval").and_then(|v| v.as_f64());
-        let centipawns = value.get("centipawns").and_then(|v| v.as_f64());
-        let pawns = pawns.or_else(|| centipawns.map(|cp| cp / 100.0));
+        if !value
+            .get("success")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            return Err(anyhow!(
+                "stockfish.online rejected the request: {}",
+                value
+                    .get("error")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("unknown")
+            ));
+        }
+        let pawns = value.get("evaluation").and_then(|v| v.as_f64());
         let mate = value.get("mate").and_then(|v| v.as_i64()).map(|m| m as i32);
         Ok((pawns, mate))
     }

@@ -1,6 +1,6 @@
 // Client-side Lichess helpers reused from the predecessor project: 429-retrying fetch,
 // cloud-eval prefetch while the user studies a position, and the screenshot URL.
-// Cloud-eval and chess-api.com are CORS-open; the explorer and game export stay
+// Cloud-eval and stockfish.online are CORS-open; the explorer and game export stay
 // server-side (the backend queries them with its token).
 
 import {Chess} from 'chess.js'
@@ -39,38 +39,38 @@ export async function fetchCloudEval(
   return {cp: pv.cp ?? null, mate: pv.mate ?? null}
 }
 
-// chess-api.com fallback when cloud-eval misses (different engine, so only used when
-// cloud-eval has nothing for the position).
-interface ChessApiResponse {
-  eval?: number
-  centipawns?: number
+// stockfish.online fallback when cloud-eval misses (different engine, so only used when
+// cloud-eval has nothing for the position). Depth is fixed at 15 per the API.
+const STOCKFISH_KEY = import.meta.env.VITE_STOCKFISH_API_KEY as string | undefined
+
+interface StockfishResponse {
+  success: boolean
+  error?: string
+  evaluation?: number | null
   mate?: number | null
 }
 
-export async function fetchChessApiEval(
+export async function fetchStockfishEval(
   fen: string,
 ): Promise<{cp: number | null; mate: number | null}> {
-  console.debug('[external api] request: POST https://chess-api.com/v1')
+  const params = new URLSearchParams({fen, depth: '15'})
+  if (STOCKFISH_KEY) params.set('key', STOCKFISH_KEY)
+  const url = `https://stockfish.online/api/s/v2.php?${params.toString()}`
+  console.debug(`[external api] request: GET ${url.replace(/&key=[^&]+/, '&key=…')}`)
   const start = performance.now()
-  const res = await fetch('https://chess-api.com/v1', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({fen, depth: 12}),
-  })
+  const res = await fetch(url)
   console.debug(
-    `[external api] response: POST https://chess-api.com/v1 -> ${res.status} in ${Math.round(performance.now() - start)}ms`,
+    `[external api] response: GET https://stockfish.online/api/s/v2.php -> ${res.status} in ${Math.round(performance.now() - start)}ms`,
   )
-  if (!res.ok) throw new Error(`chess-api.com error (${res.status})`)
-  const data = (await res.json()) as ChessApiResponse
-  return {
-    cp: typeof data.centipawns === 'number' ? data.centipawns : (data.eval ?? 0) * 100,
-    mate: data.mate ?? null,
-  }
+  if (!res.ok) throw new Error(`stockfish.online error (${res.status})`)
+  const data = (await res.json()) as StockfishResponse
+  if (!data.success) throw new Error(`stockfish.online error: ${data.error ?? 'unknown'}`)
+  return {cp: data.evaluation ?? null, mate: data.mate ?? null}
 }
 
 /**
  * Eval of one position, White POV, in pawns (or null on total failure). Cloud-eval
- * first, chess-api.com fallback. Used to prefetch the shown position's eval while the
+ * first, stockfish.online fallback. Used to prefetch the shown position's eval while the
  * user is still thinking; the after-move eval comes from the backend result.
  */
 export async function fetchPositionEval(fen: string): Promise<number | null> {
@@ -78,10 +78,10 @@ export async function fetchPositionEval(fen: string): Promise<number | null> {
     const cloud = await fetchCloudEval(fen)
     if (cloud) return cloud.mate !== null ? null : cloud.cp !== null ? cloud.cp / 100 : null
   } catch {
-    // fall through to chess-api
+    // fall through to stockfish.online
   }
   try {
-    const fallback = await fetchChessApiEval(fen)
+    const fallback = await fetchStockfishEval(fen)
     return fallback.cp !== null ? fallback.cp / 100 : null
   } catch {
     return null
