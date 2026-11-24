@@ -45,6 +45,22 @@ export function fenAfterUci(fen: string, uci: string): string | null {
   return playUci(fen, uci)?.fenAfter ?? null
 }
 
+/**
+ * From/to squares of the last move in a SAN sequence, for last-move highlighting
+ * (null when the list is empty or can't be replayed).
+ */
+export function lastMoveOfSanList(sans: string[]): [string, string] | null {
+  if (sans.length === 0) return null
+  const chess = new Chess()
+  try {
+    let last: {from: string; to: string} | null = null
+    for (const san of sans) last = chess.move(san)
+    return last ? [last.from, last.to] : null
+  } catch {
+    return null
+  }
+}
+
 /** The auto-queen promotion char for a from/to pair, or null if it isn't a promotion. */
 export function promotionOf(fen: string, from: string, to: string): 'q' | null {
   const chess = new Chess(fen)

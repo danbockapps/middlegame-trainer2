@@ -21,7 +21,14 @@ import type {
 import {RequestError} from '../api/types'
 import {Board} from '../components/Board'
 import {fetchPositionEval, screenshotUrl} from '../lib/lichess'
-import {fenAfterUci, legalDests, promotionOf, sanForUci, turnOf} from '../lib/tree'
+import {
+  fenAfterUci,
+  lastMoveOfSanList,
+  legalDests,
+  promotionOf,
+  sanForUci,
+  turnOf,
+} from '../lib/tree'
 
 type Phase =
   | {kind: 'settings'}
@@ -364,6 +371,7 @@ function PositionView(props: {
     () => (canMove ? legalDests(position.fen) : new Map<string, string[]>()),
     [canMove, position.fen],
   )
+  const lastMove = useMemo(() => lastMoveOfSanList(position.moves), [position.moves])
 
   return (
     <div className="quiz">
@@ -374,6 +382,7 @@ function PositionView(props: {
             orientation={side}
             movableColor={side}
             dests={dests}
+            lastMove={lastMove}
             onMove={onMove}
             resetSignal={boardReset}
           />
