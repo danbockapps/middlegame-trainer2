@@ -172,6 +172,7 @@ async fn generate_position(
                     // *before* the user's upcoming move at ply `pos.ply`, so anchor at
                     // the previous ply.
                     game_url: format!("https://lichess.org/{game_id}#{}", pos.ply - 1),
+                    moves: pos.san_history.clone(),
                 };
                 sqlx::query(
                     "INSERT INTO quiz_positions (quiz_id, fen_before, game_id, move_number, ply, user_is_white)

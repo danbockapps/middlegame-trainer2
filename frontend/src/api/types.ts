@@ -30,6 +30,8 @@ export interface QuizPosition {
   side: Side
   gameId: string
   gameUrl: string
+  /** SAN tokens of the moves leading up to (not including) this position. */
+  moves: string[]
 }
 
 export interface QuizStart {

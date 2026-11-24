@@ -84,6 +84,8 @@ pub struct QuizPosition {
     pub game_id: String,
     #[serde(rename = "gameUrl")]
     pub game_url: String,
+    /// SAN tokens of the moves leading up to (not including) this position.
+    pub moves: Vec<String>,
 }
 
 /// Response of `POST /api/quiz/start` and `POST /api/quiz/:id/skip`.

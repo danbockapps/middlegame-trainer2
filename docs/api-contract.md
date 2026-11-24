@@ -47,11 +47,13 @@ Leaf/dupes handled client-side too.
   ```json
   { "quizId": "uuid", "position": {
       "fen": "...", "moveNumber": 8, "side": "white",
-      "gameId": "abc123", "gameUrl": "https://lichess.org/abc123#24" } }
+      "gameId": "abc123", "gameUrl": "https://lichess.org/abc123#24",
+      "moves": ["e4", "e5", "Nf3", "Nc6"] } }
   ```
   Server: pick random same-color leaf → query Lichess amateur DB (using user's stored search
   settings: time control + min/max rating) → pick a random game and a move number within the
-  opening's Range → return the FEN before the user's move. `409` with `{ "error": "no_games" }`
+  opening's Range → return the FEN before the user's move. `moves` holds the SAN tokens of
+  every move played before that position. `409` with `{ "error": "no_games" }`
   if none found.
 - `POST /api/quiz/:quizId/move` body `{ "uci": "g1f3" }` →
   ```json

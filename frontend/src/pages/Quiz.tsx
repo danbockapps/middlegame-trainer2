@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react'
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react'
 import {Link, useNavigate, useParams} from 'react-router-dom'
 import {
   getOpening,
@@ -286,6 +286,7 @@ export function Quiz({user}: {user: User}) {
             lastMove={lastMove}
           />
         </div>
+        <MoveList moves={[...position.moves, playedSan]} />
         <p className="quiz-caption">
           You played {playedSan} — move {position.moveNumber}
         </p>
@@ -313,6 +314,34 @@ export function Quiz({user}: {user: User}) {
           </button>
         </div>
       </aside>
+    </div>
+  )
+}
+
+/**
+ * Horizontally-scrolling strip of the moves leading up to the quiz position,
+ * rendered as printed notation. Auto-scrolls to the latest move.
+ */
+function MoveList({moves}: {moves: string[]}) {
+  const strip = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    strip.current?.scrollTo({left: strip.current.scrollWidth})
+  }, [moves])
+
+  const pairs: {number: number; white: string; black: string | null}[] = []
+  for (let i = 0; i < moves.length; i += 2) {
+    pairs.push({number: i / 2 + 1, white: moves[i], black: moves[i + 1] ?? null})
+  }
+
+  return (
+    <div className="quiz-movelist" ref={strip}>
+      {pairs.map((p) => (
+        <span key={p.number} className="movelist-pair">
+          <span className="movelist-num">{p.number}.</span> {p.white}
+          {p.black && ` ${p.black}`}
+        </span>
+      ))}
     </div>
   )
 }
@@ -349,6 +378,7 @@ function PositionView(props: {
             resetSignal={boardReset}
           />
         </div>
+        <MoveList moves={position.moves} />
         <p className="quiz-caption">
           {side === 'white' ? 'White' : 'Black'} to move — move {position.moveNumber}
         </p>

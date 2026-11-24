@@ -588,6 +588,27 @@ select {
   margin: 0.8rem 0 0;
 }
 
+.quiz-movelist {
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  color: var(--ink);
+  margin-top: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid rgba(32, 38, 43, 0.15);
+  border-radius: 6px;
+  scrollbar-width: thin;
+}
+
+.movelist-pair {
+  margin-right: 0.9em;
+}
+
+.movelist-num {
+  color: var(--ink-soft);
+}
+
 .quiz-panel {
   max-width: 34em;
 }

@@ -13,6 +13,8 @@ pub struct GamePosition {
     pub move_number: u32,
     /// Ply index (1-based) of the user's upcoming move, for Lichess `#N` URLs.
     pub ply: u32,
+    /// SAN tokens of every move played before this position.
+    pub san_history: Vec<String>,
 }
 
 /// Strips PGN headers, comments, variations, NAGs and move numbers, and returns
@@ -74,6 +76,7 @@ pub fn position_before_user_move(
 
     let mut user_count: u32 = 0;
     let mut found: Option<GamePosition> = None;
+    let mut played: Vec<String> = Vec::new();
 
     for token in pgn_san_tokens(pgn) {
         if position.turn() == user {
@@ -90,6 +93,7 @@ pub fn position_before_user_move(
                     fen: position_fen(&position),
                     move_number: upcoming_move_number,
                     ply: upcoming_ply,
+                    san_history: played.clone(),
                 });
             }
             user_count += 1;
@@ -101,6 +105,7 @@ pub fn position_before_user_move(
             .to_move(&position)
             .map_err(|_| anyhow::anyhow!("illegal SAN {token:?}"))?;
         position = position.play(m).map_err(anyhow::Error::from)?;
+        played.push(token);
     }
 
     // If the game ended before the target user move, fall back to the last one.
@@ -144,6 +149,8 @@ mod tests {
         // The move played at the anchor position is Bb5.
         let tokens = pgn_san_tokens(PGN);
         assert_eq!(tokens[4], "Bb5");
+        // History is every move before white's 3rd.
+        assert_eq!(found.san_history, ["e4", "e5", "Nf3", "Nc6"]);
     }
 
     #[test]
