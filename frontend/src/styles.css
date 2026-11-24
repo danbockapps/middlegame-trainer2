@@ -630,26 +630,56 @@ select {
   max-width: 30em;
 }
 
+/* Two grading sources, visually distinct: engine (verdict + delta) and
+   masters database (popularity + top moves). */
 .annotation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 0.5rem 0 1.5rem;
+}
+
+.annotation-group {
+  flex: 1 1 14em;
   border-left: 2px solid var(--spruce);
   padding-left: 1rem;
-  margin: 0.5rem 0 1.5rem;
+}
+
+/* The masters database is printed record, not engine output —
+   set it in the voice face with a quieter rule. */
+.annotation-group-masters {
+  border-left-color: var(--ink-soft);
+}
+
+.annotation-source {
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin: 0 0 0.25rem;
 }
 
 .annotation-line {
   font-size: 1.15rem;
-  margin: 0.3rem 0;
+  margin: 0.3rem 0 0.4rem;
 }
 
 .annotation-line strong {
   font-family: var(--mono);
   font-size: 1.3rem;
   font-weight: 600;
+  margin-right: 0.5em;
 }
 
 .annotation-sub {
   color: var(--ink-soft);
   font-size: 0.9rem;
+}
+
+.annotation-footnote {
+  font-size: 0.78rem;
+  margin: 0;
 }
 
 .top-moves {

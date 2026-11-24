@@ -454,29 +454,35 @@ function Annotation(props: {
 
   return (
     <div className="annotation">
-      <p className="annotation-line">
-        <strong className={`tone-${tone}`}>{deltaLabel}</strong>{' '}
-        <span className="annotation-sub">
-          engine eval after your move{evalDetail && ` — ${evalDetail}`}
-        </span>
-      </p>
-      <p className="annotation-line">
-        <strong>{percent === null ? '—' : `${percent}%`}</strong>{' '}
-        <span className="annotation-sub">
-          of master games chose it here ({playedLabel}
-          {percent === null && ' — no percentage available'})
-        </span>
-      </p>
-      {masters.topMoves.length > 0 && (
-        <p className="annotation-sub top-moves">
-          Masters' top moves:{' '}
-          {masters.topMoves
-            .slice(0, 4)
-            .map((m) => `${m.san} ${Math.round(m.percent * 100)}%`)
-            .join(', ')}
+      <div className="annotation-group">
+        <h3 className="annotation-source">Engine</h3>
+        <p className="annotation-line">
+          <strong className={`tone-${tone}`}>{deltaLabel}</strong>
+          <span className="annotation-sub">
+            after your move{evalDetail && ` · ${evalDetail}`}
+          </span>
         </p>
-      )}
-      <p className="annotation-sub">eval source: {evalData.source}</p>
+        <p className="annotation-sub annotation-footnote">source: {evalData.source}</p>
+      </div>
+      <div className="annotation-group annotation-group-masters">
+        <h3 className="annotation-source">Masters</h3>
+        <p className="annotation-line">
+          <strong>{percent === null ? '—' : `${percent}%`}</strong>
+          <span className="annotation-sub">
+            {percent === null
+              ? playedLabel
+              : `of master games chose it (${playedLabel})`}
+          </span>
+        </p>
+        {masters.topMoves.length > 0 && (
+          <p className="annotation-sub top-moves">
+            {masters.topMoves
+              .slice(0, 4)
+              .map((m) => `${m.san} ${Math.round(m.percent * 100)}%`)
+              .join(', ')}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
