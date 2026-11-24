@@ -170,27 +170,38 @@ pub fn build_tree(moves: &[String]) -> Tree {
     tree
 }
 
-/// A position where the user (playing `user`) is to move, that a quiz can be built from.
+/// The requirements' "same-color leaf node": the deepest node on a root-to-leaf path
+/// that was reached by a move of the user's side (so the opponent is to move there).
+/// Quizzes built from this FEN are guaranteed to follow the user's repertoire up to
+/// their last stored move. For paths with no user move yet, the root is the fallback.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QuizAnchor {
-    /// Index of the node with the user's side to move (the FEN before the user's move).
+    /// Index of the node reached by the user's last move (opponent to move there).
     pub node: usize,
-    /// Number of user moves already made on the path to `node`. The upcoming move
-    /// is the user's `user_moves + 1`-th.
+    /// Number of user moves on the path to `node`; the user's last stored move is the
+    /// `user_moves`-th, and the quiz range offsets the target beyond it.
     pub user_moves: u32,
 }
 
 /// Finds all same-color quiz anchors: for every root-to-leaf path, the deepest node
-/// whose side to move is the user's. If a path's deepest leaf is the opponent's turn,
-/// this naturally selects the user's move preceding it.
+/// reached by a user move (opponent to move there). If the deepest leaf is the user's
+/// turn, this selects the opponent's move preceding it, i.e. the node after the user's
+/// last move on the path.
 pub fn quiz_anchors(tree: &Tree, user: Color) -> Vec<QuizAnchor> {
     if tree.nodes.is_empty() {
         return Vec::new();
     }
     let mut out = Vec::new();
-    walk(tree, tree.root(), user, 0, None, &mut |node, user_moves| {
-        out.push(QuizAnchor { node, user_moves });
-    });
+    walk(
+        tree,
+        tree.root(),
+        user,
+        0,
+        tree.root(),
+        &mut |node, user_moves| {
+            out.push(QuizAnchor { node, user_moves });
+        },
+    );
     out
 }
 
@@ -199,24 +210,23 @@ fn walk(
     idx: usize,
     user: Color,
     user_moves: u32,
-    anchor: Option<usize>,
+    anchor: usize,
     emit: &mut impl FnMut(usize, u32),
 ) {
     let node = &tree.nodes[idx];
-    let is_user_turn = node.position.turn() == user;
-    let (anchor, user_moves) = if is_user_turn {
-        (Some(idx), user_moves)
+    // Anchor: the deepest node on the path whose last move was the user's (opponent
+    // to move there). The root is the initial fallback for paths with no user move.
+    let anchor = if node.position.turn() != user {
+        idx
     } else {
-        (anchor, user_moves)
+        anchor
     };
     if node.children.is_empty() {
-        if let Some(a) = anchor {
-            emit(a, user_moves);
-        }
+        emit(anchor, user_moves);
         return;
     }
     for &child in &node.children {
-        let next_moves = if is_user_turn {
+        let next_moves = if node.position.turn() == user {
             user_moves + 1
         } else {
             user_moves
@@ -331,41 +341,41 @@ mod tests {
     }
 
     #[test]
-    fn anchors_prefer_user_turn_leaves() {
+    fn anchors_are_same_color_leaf_nodes() {
         // White repertoire: e4, then black's e5, then white's Nf3 (leaf is black's turn).
         let tree = build_tree(&moves(&["e2e4", "e7e5", "g1f3", "b8c6"]));
-        // Leaf is after black's b8c6 → white to move. Anchors should be the nodes
-        // where white is to move: the root and the position after e7e5.
+        // Nodes: 0 root, 1 e4, 2 e5, 3 Nf3, 4 b8c6. The leaf (4) was reached by
+        // black's move, so the same-color leaf is the white move preceding it: the
+        // Nf3 node (3), where black is to move.
         let anchors = quiz_anchors(&tree, Color::White);
-        let nodes: Vec<usize> = anchors.iter().map(|a| a.node).collect();
-        // The only path is root->e4->e5->Nf3->b8c6; its leaf is white-to-move,
-        // so the anchor is the b8c6 node itself (depth 4).
         assert_eq!(anchors.len(), 1);
-        assert_eq!(nodes[0], 4);
-        // Every anchor must be a white-to-move position.
+        assert_eq!(anchors[0].node, 3);
+        assert_eq!(anchors[0].user_moves, 2);
+        // Every anchor must be a position with the opponent to move.
         for a in &anchors {
-            assert!(tree.is_turn(a.node, Color::White));
+            assert!(tree.is_turn(a.node, Color::Black));
         }
-        // The root is never an anchor here because each path continues with white moves.
-        assert!(!nodes.contains(&0));
     }
 
     #[test]
     fn anchor_counts_user_moves() {
-        // Two black replies to e4 make two paths; both anchors are after 1 white move.
+        // Two black replies to e4 make two paths; both same-color leaves are after
+        // 1 white move (the e4 node).
         let tree = build_tree(&moves(&["e2e4", "e7e5", "e2e4", "c7c5"]));
         // after the second branch, tree has root, e4 (shared), e5 and c5.
         let anchors = quiz_anchors(&tree, Color::White);
         assert_eq!(anchors.len(), 2);
         for a in &anchors {
+            assert_eq!(a.node, 1);
             assert_eq!(a.user_moves, 1);
         }
-        // Black side: both paths share the black-to-move node after 1.e4.
+        // Black side: both paths end with a black reply, so the same-color leaves are
+        // the e5/c5 nodes themselves (white to move there).
         let anchors = quiz_anchors(&tree, Color::Black);
         assert_eq!(anchors.len(), 2);
         for a in &anchors {
-            assert!(tree.is_turn(a.node, Color::Black));
-            // Upcoming black move is their 2nd (after white's e4).
+            assert!(tree.is_turn(a.node, Color::White));
+            // The user's last stored black move is their 1st.
             assert_eq!(a.user_moves, 1);
         }
     }

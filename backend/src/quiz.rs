@@ -103,8 +103,9 @@ async fn generate_position(
     }
     let anchor = &anchors[rand::rng().random_range(0..anchors.len())];
 
-    // The upcoming user move is the (user_moves + 1)-th; the range offsets it.
-    let target_index = (anchor.user_moves as i64 + 1 + range_min).max(1);
+    // The user's last stored move is the user_moves-th; the range offsets the target
+    // beyond it (a range of 0 re-quizzes the last repertoire move).
+    let target_index = (anchor.user_moves as i64 + range_min).max(1);
     let offset = if range_max > range_min {
         rand::rng().random_range(0..=(range_max - range_min))
     } else {

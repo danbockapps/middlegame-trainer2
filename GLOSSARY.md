@@ -10,9 +10,11 @@ A position in an Opening's move tree. The root node is the initial position. Eac
 the root is reached by one move.
 
 ## Leaf node
-A Node with no children. "Same-color leaf node" is the last Node in a line whose turn it is
-for the user's side in that Opening; if the deepest leaf is the opponent's turn, the
-same-color leaf is the user's move preceding it.
+A Node with no children. "Same-color leaf node" is the last Node in a line reached by a move
+of the user's side in that Opening (so the opponent is to move there); if the deepest leaf is
+the user's turn, the same-color leaf is the opponent's move preceding it, i.e. the node after
+the user's last move. Quizzing from this FEN guarantees games followed the repertoire up to
+the user's last stored move.
 
 ## Quiz session
 A sequence of Quiz positions drawn from one Opening, starting with the user selecting the
