@@ -136,6 +136,6 @@ async fn eval_delta_inner(
     Ok(EvalDelta {
         before: to_value(before),
         after: to_value(after),
-        source: "stockfish",
+        source: "stockfish.online",
     })
 }
