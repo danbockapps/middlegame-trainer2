@@ -54,6 +54,9 @@ interface MastersShape {
 
 const TIME_CONTROLS: TimeControl[] = ['blitz', 'rapid', 'classical']
 
+// Module-level constant: an identity-stable empty dests map for the non-movable board.
+const EMPTY_DESTS = new Map<string, string[]>()
+
 export function Quiz({user}: {user: User}) {
   const {id} = useParams()
   const openingId = Number(id)
@@ -136,6 +139,25 @@ export function Quiz({user}: {user: User}) {
     }
   }, [phase])
 
+  // Stable inputs for the shared Board (see the layout comment below). Memoized so
+  // unrelated re-renders (busy toggling, eval prefetch) never re-run Board's api.set
+  // with a stale fen — that would animate the optimistically moved piece back home
+  // and then forward again once the result arrives.
+  const quizPos = phase.kind === 'position' || phase.kind === 'result' ? phase.position : null
+  const played = phase.kind === 'result' ? phase.played : null
+  const side = quizPos?.side ?? 'white'
+  const canMove = !!quizPos && !played && turnOf(quizPos.fen) === (side === 'white' ? 'w' : 'b')
+  const dests = useMemo(
+    () => (quizPos && canMove ? legalDests(quizPos.fen) : EMPTY_DESTS),
+    [quizPos, canMove],
+  )
+  const lastMove = useMemo(() => {
+    if (!quizPos) return null
+    return played
+      ? ([played.slice(0, 2), played.slice(2, 4)] as [string, string])
+      : lastMoveOfSanList(quizPos.moves)
+  }, [quizPos, played])
+
   if (phase.kind === 'settings') {
     return (
       <div className="quiz-settings">
@@ -215,8 +237,17 @@ export function Quiz({user}: {user: User}) {
     )
   }
 
+  // From here on the phase is 'position' or 'result'; both render the SAME board
+  // subtree (same element position) so React keeps the chessground instance alive
+  // across the transition. Unmounting/remounting the board makes every piece jump.
   const position = phase.position
-  const side = position.side
+  const isResult = phase.kind === 'result'
+  const afterFen = played ? (fenAfterUci(position.fen, played) ?? position.fen) : position.fen
+  const playedSan = played ? (sanForUci(position.fen, played) ?? played) : null
+  const moves = playedSan ? [...position.moves, playedSan] : position.moves
+  const shot = played
+    ? screenshotUrl(afterFen, side, {from: played.slice(0, 2), to: played.slice(2, 4)})
+    : undefined
 
   const playMove = (from: string, to: string) => {
     if (phase.kind !== 'position' || busy) return
@@ -259,27 +290,8 @@ export function Quiz({user}: {user: User}) {
       .finally(() => setBusy(false))
   }
 
-  if (phase.kind === 'position') {
-    return (
-      <PositionView
-        position={position}
-        minRating={minRating}
-        maxRating={maxRating}
-        tc={tc}
-        busy={busy}
-        submitError={submitError}
-        boardReset={boardReset}
-        onMove={playMove}
-        onSkip={next}
-      />
-    )
-  }
-
-  // --- Result phase ---
-  const {played, afterFen, masters, evalData} = phase
-  const lastMove: [string, string] = [played.slice(0, 2), played.slice(2, 4)]
-  const shot = screenshotUrl(afterFen, side, {from: lastMove[0], to: lastMove[1]})
-  const playedSan = sanForUci(position.fen, played) ?? played
+  // --- Position + result phases share one layout so the Board element stays in the
+  // same tree position and the chessground instance survives the transition ---
 
   return (
     <div className="quiz">
@@ -288,38 +300,67 @@ export function Quiz({user}: {user: User}) {
           <Board
             fen={afterFen}
             orientation={side}
-            movableColor={null}
-            dests={null}
+            movableColor={canMove ? side : null}
+            dests={dests}
             lastMove={lastMove}
+            onMove={playMove}
+            resetSignal={boardReset}
           />
         </div>
-        <MoveList moves={[...position.moves, playedSan]} />
+        <MoveList moves={moves} />
         <p className="quiz-caption">
-          You played {playedSan} — move {position.moveNumber}
+          {playedSan
+            ? `You played ${playedSan} — move ${position.moveNumber}`
+            : `${side === 'white' ? 'White' : 'Black'} to move — move ${position.moveNumber}`}
         </p>
         {submitError && <p className="error-note">{submitError}</p>}
       </div>
       <aside className="quiz-panel">
-        <Annotation evalData={evalData} masters={masters} side={side} prefetched={prefetchedEval} />
-        <div className="result-actions">
-          <button type="button" onClick={next} disabled={busy}>
-            Next position
-          </button>
-          <a className="button-like secondary" href={shot} target="_blank" rel="noreferrer">
-            Screenshot
-          </a>
-          <a
-            className="button-like secondary"
-            href={position.gameUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Game on Lichess
-          </a>
-          <button type="button" className="link-button" onClick={() => navigate('/')}>
-            End quiz
-          </button>
-        </div>
+        {isResult ? (
+          <>
+            <Annotation
+              evalData={phase.evalData}
+              masters={phase.masters}
+              side={side}
+              prefetched={prefetchedEval}
+            />
+            <div className="result-actions">
+              <button type="button" onClick={next} disabled={busy}>
+                Next position
+              </button>
+              <a
+                className="button-like secondary"
+                href={shot ?? ''}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Screenshot
+              </a>
+              <a
+                className="button-like secondary"
+                href={position.gameUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Game on Lichess
+              </a>
+              <button type="button" className="link-button" onClick={() => navigate('/')}>
+                End quiz
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2>Your move</h2>
+            <p className="margin-note">
+              From a real game between players rated {minRating}–{maxRating} at {tc}. One move, the
+              way you'd play it over the board.
+            </p>
+            <button type="button" className="secondary" onClick={next} disabled={busy}>
+              Skip this position
+            </button>
+          </>
+        )}
       </aside>
     </div>
   )
@@ -349,60 +390,6 @@ function MoveList({moves}: {moves: string[]}) {
           {p.black && ` ${p.black}`}
         </span>
       ))}
-    </div>
-  )
-}
-
-function PositionView(props: {
-  position: QuizPosition
-  minRating: number
-  maxRating: number
-  tc: TimeControl
-  busy: boolean
-  submitError: string | null
-  boardReset: number
-  onMove: (from: string, to: string) => void
-  onSkip: () => void
-}) {
-  const {position, minRating, maxRating, tc, busy, submitError, boardReset, onMove, onSkip} = props
-  const side = position.side
-  const canMove = turnOf(position.fen) === (side === 'white' ? 'w' : 'b')
-  const dests = useMemo(
-    () => (canMove ? legalDests(position.fen) : new Map<string, string[]>()),
-    [canMove, position.fen],
-  )
-  const lastMove = useMemo(() => lastMoveOfSanList(position.moves), [position.moves])
-
-  return (
-    <div className="quiz">
-      <div className="quiz-board">
-        <div className="board-plinth">
-          <Board
-            fen={position.fen}
-            orientation={side}
-            movableColor={side}
-            dests={dests}
-            lastMove={lastMove}
-            onMove={onMove}
-            resetSignal={boardReset}
-          />
-        </div>
-        <MoveList moves={position.moves} />
-        <p className="quiz-caption">
-          {side === 'white' ? 'White' : 'Black'} to move — move {position.moveNumber}
-        </p>
-        {submitError && <p className="error-note">{submitError}</p>}
-      </div>
-      <aside className="quiz-panel">
-        <h2>Your move</h2>
-        <p className="margin-note">
-          From a real game between players rated {minRating}–{maxRating} at {tc}. One move, the way
-          you'd play it over the board.
-        </p>
-        <button type="button" className="secondary" onClick={onSkip} disabled={busy}>
-          Skip this position
-        </button>
-      </aside>
     </div>
   )
 }
