@@ -14,5 +14,5 @@ for _ in $(seq 1 30); do
 done
 
 echo "FAILED: https://middlegame.danbock.net/ did not come up within 30s." >&2
-echo "Check 'docker compose logs backend' on the server." >&2
+echo "Check 'journalctl CONTAINER_NAME=middlegame-backend --since today' on the server." >&2
 exit 1

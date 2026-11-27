@@ -15,7 +15,16 @@ services:
     volumes:
       - /var/lib/middlegame.danbock.net:/app/data
       - ./frontend/dist:/app/static:ro
+    container_name: middlegame-backend
     restart: unless-stopped
+    # Logs go to the host's systemd journal, so they survive container removal
+    # and rebuilds. View with:
+    #   journalctl CONTAINER_NAME=middlegame-backend          # all history
+    #   journalctl CONTAINER_NAME=middlegame-backend -f       # follow
+    #   journalctl CONTAINER_NAME=middlegame-backend --since today
+    # NOTE: `docker logs` does not work with this driver.
+    logging:
+      driver: journald
 
   # Builds the frontend's static assets into a shared image; the backend serves
   # them from ./frontend/dist on the host. Run with:
